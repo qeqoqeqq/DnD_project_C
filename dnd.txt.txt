@@ -1,0 +1,157 @@
+#include <stdio.h>
+#include "dice.h"
+#include <string.h>
+#include <stdlib.h>
+
+
+struct Armor{
+    char id[20];
+    int armor_class;
+};
+
+
+struct AttackType{
+    char id[20];
+    int dice_count;
+    int attack_bonus;
+    DiceType dice_type;
+    int damage_bonus;
+};
+
+
+struct Creature{
+    char id[20];
+    int hp;
+    int attack_bonus;
+    struct Armor armor;
+    struct AttackType attack_type;
+};
+
+struct Armor parse_armor(FILE *fp){
+    struct  Armor a;
+    fscanf(fp, "%19s %d", a.id, &a.armor_class);
+    return a;
+};
+
+
+// input in the format of <id> <hp> <attack_bonus> <armor_id> <attack_type_id>
+struct AttackType parse_attack_type(FILE *fp){
+    struct AttackType b;
+    char Char; 
+    int sides;
+    fscanf(fp, "%19s %d %c%d %d", b.id, &b.dice_count, &Char, &sides, &b.damage_bonus);
+    b.dice_type = (DiceType)sides;
+    return b;
+};
+
+
+// input in the format of <id> <hp> <attack_bonus> <armor_id> <attack_type_id>
+struct Creature parse_creature(FILE *fp, struct Armor armors[], int armor_count, struct AttackType attack_types[], int attack_type_count){
+    struct Creature c;
+    char armor_id[20];
+    char attack_type_id[20];
+    fscanf(fp, "%19s %d %d %19s %19s", c.id, &c.hp, &c.attack_bonus, armor_id, attack_type_id);
+
+    for (int i = 0; i < armor_count; i++){
+        if (strcmp(armors[i].id, armor_id) == 0 ){
+            c.armor = armors[i];
+            break;
+        }
+    }
+        
+    for (int j = 0; j < attack_type_count; j++){
+        if (strcmp(attack_types[j].id, attack_type_id) == 0 ){
+            c.attack_type = attack_types[j];
+            break;
+        }
+    }
+    return c;
+};
+    
+    
+
+struct Creature *fight(struct Creature *c1, struct Creature *c2){
+    struct Creature *attacker = c1;
+    struct Creature *defender = c2;
+    int hit_roll;
+
+    while (c1->hp > 0 && c2->hp > 0){
+        hit_roll = roll(D20, 1, attacker->attack_bonus); // roll(DiceType dice, int count, int bonus)
+
+        if (hit_roll >= defender->armor.armor_class){
+        int damage = roll(attacker->attack_type.dice_type, 
+            attacker->attack_type.dice_count,
+            attacker->attack_type.damage_bonus);
+
+        defender->hp -= damage;                 
+    }
+
+    if (defender->hp <= 0){
+        return attacker;
+    }
+
+    struct Creature *tmp = attacker;
+    attacker = defender;
+    defender = tmp;
+    }
+  
+}
+
+
+// TODO: main should take a filename argument, open the file, parse
+// its contents and simulate the fights. Print out the first character
+// of the winner of each fight.
+int main(int argc, char *argv[]){
+    FILE *fp = fopen(argv[1], "r");
+    if (fp == NULL){
+        perror("Could not open the file!");
+        return 1;
+    }
+
+
+    int armor_count;
+    fscanf(fp, "%d", &armor_count); 
+    struct Armor *armors = (struct Armor*)malloc(armor_count * sizeof(struct Armor));
+    for (int i = 0; i < armor_count; i++) {
+        armors[i] = parse_armor(fp);
+    }
+
+    int attack_type_count;
+    fscanf(fp, "%d", &attack_type_count);
+    struct AttackType *attack_types = (struct AttackType*)malloc(attack_type_count * sizeof(struct AttackType));
+    for (int i = 0; i < attack_type_count; i++) {
+        attack_types[i] = parse_attack_type(fp);
+    }
+
+    int creature_count;
+    fscanf(fp, "%d", &creature_count);
+    struct Creature *creatures = (struct AttackCreature*)malloc(creature_count * sizeof(struct Creature));
+    for (int i = 0; i < creature_count; i++) {
+        creatures[i] = parse_creature(fp, armors, armor_count, attack_types, attack_type_count);
+    }
+
+    fclose(fp);
+
+    for (int i = 0; i < creature_count; i += 2){
+        struct Creature *winner = fight(&creatures[i], &creatures[i+1]);
+        printf("%c", winner->id[0]);
+    }
+
+    printf("\n");
+    free(armors);
+    free(attack_types);
+    free(creatures);
+
+    return 0;
+};
+
+
+
+
+
+
+
+
+        
+
+ 
